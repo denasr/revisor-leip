@@ -1,31 +1,23 @@
 // api/analizar.js
-// Función serverless de Vercel — actúa como proxy seguro hacia la API de Anthropic.
-// La API key NUNCA llega al navegador del estudiante; solo vive en las variables
-// de entorno del servidor de Vercel.
+// Proxy seguro hacia Anthropic con reintentos automáticos en caso de rate limit (429)
 
 export const config = {
-  // Necesario para recibir PDFs en base64 (pueden ser grandes)
   api: {
-    bodyParser: {
-      sizeLimit: '25mb',
-    },
+    bodyParser: { sizeLimit: '25mb' },
   },
 };
 
-export default async function handler(req, res) {
-  // Solo aceptamos POST
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Método no permitido' });
-  }
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: 'API key no configurada en el servidor.' });
-  }
+async function callWithRetry(payload, apiKey, maxRetries = 4) {
+  const delays = [10000, 20000, 35000, 60000]; // 10s, 20s, 35s, 60s
 
-  try {
-    // El cuerpo que llega del frontend ya tiene la forma exacta que Anthropic espera
-    const payload = req.body;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    if (attempt > 0) {
+      const waitMs = delays[attempt - 1];
+      console.log(`[analizar] Intento ${attempt + 1} — esperando ${waitMs / 1000}s por rate limit...`);
+      await sleep(waitMs);
+    }
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -37,17 +29,37 @@ export default async function handler(req, res) {
       body: JSON.stringify(payload),
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      return res.status(response.status).json({
-        error: data?.error?.message ?? `Error de la API: ${response.status}`,
-      });
+    if (response.status === 429) {
+      const errData = await response.json().catch(() => ({}));
+      console.warn(`[analizar] 429 en intento ${attempt + 1}: ${errData?.error?.message}`);
+      if (attempt < maxRetries) continue;
+      throw new Error('Límite de velocidad excedido. Espera un minuto e intenta de nuevo.');
     }
 
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData?.error?.message ?? `Error HTTP ${response.status}`);
+    }
+
+    return await response.json();
+  }
+}
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Método no permitido' });
+  }
+
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ error: 'API key no configurada en el servidor.' });
+  }
+
+  try {
+    const data = await callWithRetry(req.body, apiKey);
     return res.status(200).json(data);
   } catch (err) {
-    console.error('[api/analizar]', err);
-    return res.status(500).json({ error: 'Error interno del servidor: ' + err.message });
+    console.error('[analizar]', err.message);
+    return res.status(500).json({ error: err.message });
   }
 }
