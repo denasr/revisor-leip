@@ -136,6 +136,20 @@ const readFileAsText = (file) =>
     reader.onerror = reject;
   });
 
+// Extrae texto plano de un .docx usando mammoth (cargado desde CDN en index.html)
+const readDocx = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsArrayBuffer(file);
+    reader.onload = async () => {
+      try {
+        const result = await window.mammoth.extractRawText({ arrayBuffer: reader.result });
+        resolve(result.value);
+      } catch (e) { reject(new Error("No se pudo leer el .docx. Asegúrate de que no esté protegido con contraseña.")); }
+    };
+    reader.onerror = reject;
+  });
+
 const STATUS_CFG = {
   Cumplido:        { color: "bg-emerald-100 text-emerald-800 border-emerald-300", icon: <CheckCircle className="w-4 h-4 text-emerald-600" /> },
   Parcial:         { color: "bg-amber-100 text-amber-800 border-amber-300",       icon: <AlertTriangle className="w-4 h-4 text-amber-500" /> },
@@ -257,8 +271,8 @@ export default function App() {
       if (f.size > 20 * 1024 * 1024) { setError("El archivo supera los 20 MB."); return; }
     } else {
       const ext = f.name.split(".").pop().toLowerCase();
-      if (!["md","txt","markdown"].includes(ext)) { setError("Solo se aceptan archivos .md o .txt"); return; }
-      if (f.size > 2 * 1024 * 1024) { setError("El archivo supera los 2 MB."); return; }
+      if (!["md","txt","markdown","docx"].includes(ext)) { setError("Solo se aceptan archivos .docx, .md o .txt"); return; }
+      if (f.size > 10 * 1024 * 1024) { setError("El archivo supera los 10 MB."); return; }
     }
     setFile(f); setResults(null);
   };
@@ -317,14 +331,19 @@ export default function App() {
       ];
     }
 
-    // Texto: desde textarea o desde archivo .md/.txt
+    // Texto: desde textarea o desde archivo .md/.txt/.docx
     let texto = "";
     let nombre = "";
     if (modo === "texto") {
       texto = textoDirecto.trim();
       nombre = nombreTexto.trim() || "Proyecto sin título";
     } else {
-      texto = await readFileAsText(file);
+      const ext = file.name.split(".").pop().toLowerCase();
+      if (ext === "docx") {
+        texto = await readDocx(file);
+      } else {
+        texto = await readFileAsText(file);
+      }
       nombre = file.name;
     }
     return [{ type: "text", text: `Proyecto: ${nombre}\n\n${texto}\n\n---\n${instruccion.text}` }];
@@ -344,7 +363,10 @@ export default function App() {
     setLoading(true); setError(null); setResults(null);
     try {
       if (modo === "pdf") setStatusMsg("Codificando PDF…");
-      else if (modo === "archivo") setStatusMsg("Leyendo archivo…");
+      else if (modo === "archivo") {
+        const ext = file?.name.split(".").pop().toLowerCase();
+        setStatusMsg(ext === "docx" ? "Extrayendo texto del Word…" : "Leyendo archivo…");
+      }
       else setStatusMsg("Preparando texto…");
 
       const userContent1 = await buildUserContent1();
@@ -472,7 +494,7 @@ ${results.recomendaciones.map((r, i) => `${i + 1}. ${r.aspecto}\n   ¿Por qué? 
             <div style={{ display: "flex", gap: 10, marginBottom: 24, flexWrap: "wrap" }}>
               {[
                 { id: "pdf",     label: "Subir PDF",          icon: <FileText style={{ width: 16, height: 16 }} />,         desc: "Archivo .pdf · máx. 20 MB" },
-                { id: "archivo", label: "Subir Markdown/TXT", icon: <FileCode style={{ width: 16, height: 16 }} />,         desc: "Archivo .md o .txt · más rápido" },
+                { id: "archivo", label: "Subir Word/MD/TXT",  icon: <FileCode style={{ width: 16, height: 16 }} />,         desc: "Archivo .docx, .md o .txt · más rápido" },
                 { id: "texto",   label: "Pegar texto",        icon: <ClipboardPaste style={{ width: 16, height: 16 }} />,   desc: "Copia y pega directamente" },
               ].map(m => (
                 <button key={m.id} onClick={() => { setModo(m.id); resetInput(); }}
@@ -509,12 +531,12 @@ ${results.recomendaciones.map((r, i) => `${i + 1}. ${r.aspecto}\n   ¿Por qué? 
               </div>
             )}
 
-            {/* ZONA ARCHIVO MD/TXT */}
+            {/* ZONA ARCHIVO DOCX/MD/TXT */}
             {modo === "archivo" && (
               <div className="upload-zone" onClick={() => fileInputRef.current?.click()}
                 onDragOver={handleDragOver} onDrop={handleDrop}
                 style={{ border: `2px dashed ${file ? "#10b981" : "#6366f1"}`, borderRadius: 10, padding: "2.5rem 2rem", textAlign: "center", cursor: "pointer", transition: "all 0.2s", background: file ? "#f0fdf4" : "#fafafa" }}>
-                <input type="file" accept=".md,.txt,.markdown" ref={fileInputRef} onChange={handleFileSelect} style={{ display: "none" }} />
+                <input type="file" accept=".docx,.md,.txt,.markdown" ref={fileInputRef} onChange={handleFileSelect} style={{ display: "none" }} />
                 {file ? (
                   <>
                     <FileCode style={{ width: 44, height: 44, color: "#10b981", margin: "0 auto 12px" }} />
@@ -524,13 +546,17 @@ ${results.recomendaciones.map((r, i) => `${i + 1}. ${r.aspecto}\n   ¿Por qué? 
                 ) : (
                   <>
                     <FileCode style={{ width: 44, height: 44, color: "#6366f1", margin: "0 auto 12px" }} />
-                    <p style={{ fontWeight: 600, color: "#475569", marginBottom: 4 }} className="serif-body">Arrastra tu archivo .md o .txt aquí</p>
-                    <p style={{ fontSize: 13, color: "#94a3b8" }}>o haz clic para seleccionar · máx. 2 MB</p>
-                    <div style={{ marginTop: 16, padding: "10px 16px", background: "#ede9fe", borderRadius: 8, display: "inline-block" }}>
-                      <p style={{ fontSize: 12, color: "#5b21b6", margin: 0 }}>
-                        💡 En Word: <strong>Archivo → Guardar como → Texto sin formato (.txt)</strong><br />
-                        En Google Docs: <strong>Archivo → Descargar → Texto sin formato</strong>
-                      </p>
+                    <p style={{ fontWeight: 600, color: "#475569", marginBottom: 4 }} className="serif-body">Arrastra tu archivo aquí</p>
+                    <p style={{ fontSize: 13, color: "#94a3b8", marginBottom: 16 }}>Formatos aceptados: <strong>.docx · .md · .txt</strong> · máx. 10 MB</p>
+                    <div style={{ display: "inline-grid", gridTemplateColumns: "1fr 1fr", gap: 8, textAlign: "left" }}>
+                      <div style={{ padding: "8px 12px", background: "#ede9fe", borderRadius: 8 }}>
+                        <p style={{ fontSize: 11, color: "#5b21b6", margin: 0, fontWeight: 700 }}>📄 Word (.docx)</p>
+                        <p style={{ fontSize: 11, color: "#7c3aed", margin: "2px 0 0" }}>Guarda directamente como .docx</p>
+                      </div>
+                      <div style={{ padding: "8px 12px", background: "#ede9fe", borderRadius: 8 }}>
+                        <p style={{ fontSize: 11, color: "#5b21b6", margin: 0, fontWeight: 700 }}>📝 Texto (.txt)</p>
+                        <p style={{ fontSize: 11, color: "#7c3aed", margin: "2px 0 0" }}>Word: Guardar como → Texto sin formato</p>
+                      </div>
                     </div>
                   </>
                 )}
