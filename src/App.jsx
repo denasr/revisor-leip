@@ -754,7 +754,7 @@ ${results.recomendaciones.map((r, i) => `${i + 1}. ${r.aspecto}\n   ¿Por qué? 
 
         <footer style={{ textAlign: "center", marginTop: 32, paddingTop: 16, borderTop: "1px solid #e2e8f0" }}>
           <p style={{ fontSize: 11, color: "#94a3b8", letterSpacing: "0.05em" }} className="serif-body">
-            Revisor LEIP · UPN Unidad 321 Zacatecas · {TOTAL} criterios según Lista de Cotejo oficial
+            Revisor LEIP · UPN Unidad 321 Zacatecas · {TOTAL} criterios según Lista de Cotejo oficial · Diseño y Desarrollo Web Rafael Dena
           </p>
         </footer>
       </div>
