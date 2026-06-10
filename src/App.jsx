@@ -479,7 +479,7 @@ ${results.recomendaciones.map((r, i) => `${i + 1}. ${r.aspecto}\n   ¿Por qué? 
             Revisor Académico LEIP
           </h1>
           <p style={{ color: "#64748b", fontSize: 14, fontStyle: "italic" }} className="serif-body">
-            Sistema de retroalimentación automática · {TOTAL} criterios evaluados
+            Sistema de retroalimentación automática · {TOTAL} criterios evaluados · Diseño y desarrollo Web Rafael Dena
           </p>
         </header>
 
