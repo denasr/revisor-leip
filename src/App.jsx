@@ -10,10 +10,10 @@ import {
 // ─────────────────────────────────────────────
 const CHECKLIST = [
   { id: 1,  seccion: "CRITERIOS EDITORIALES",       criterio: "Fuente Arial número 11, o Times New Roman 12 en todo el documento" },
-  { id: 2,  seccion: "CRITERIOS EDITORIALES",       criterio: "Interlineado de 1.5 en todo el documento incluidas las referencias, excepto dentro de las tablas" },
-  { id: 3,  seccion: "CRITERIOS EDITORIALES",       criterio: "Todo el texto justificado, incluyendo referencias" },
+  { id: 2,  seccion: "CRITERIOS EDITORIALES",       criterio: "Interlineado de 1.5 en todo el documento incluidas las referencias excepto en portada y portadilla, así como dentro de las tablas donde el interlineado es sencillo de 1.0" },
+  { id: 3,  seccion: "CRITERIOS EDITORIALES",       criterio: "Todo el texto justificado, incluyendo referencias, excepto en portada, portadilla y en Nivel 1 de títulos " },
   { id: 4,  seccion: "CRITERIOS EDITORIALES",       criterio: "Márgenes de 2.54 cm en los cuatro lados de la página" },
-  { id: 5,  seccion: "CRITERIOS EDITORIALES",       criterio: "Número de página sencillo sin adornos en la esquina superior derecha" },
+  { id: 5,  seccion: "CRITERIOS EDITORIALES",       criterio: "Número de página sencillo sin adornos en la esquina superior derecha o en la esquina inferior derecha" },
   { id: 6,  seccion: "PORTADA Y PORTADILLA",        criterio: "Logo UPN arriba a la derecha y logo SEDUZAC a la izquierda" },
   { id: 7,  seccion: "PORTADA Y PORTADILLA",        criterio: "Todos los datos de la portada y portadilla centrados" },
   { id: 8,  seccion: "PORTADA Y PORTADILLA",        criterio: "Texto en negritas del número 12 (Times New Roman) o 11 (Arial)" },
